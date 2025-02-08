@@ -1,34 +1,42 @@
 from flask import Blueprint, jsonify, request
-
+from app.schemas.question import QuestionCreate, QuestionResponse
 from app.models.question import Question
 import pandas as pd
+from pydantic import ValidationError
 
 questions_bp = Blueprint('questions', __name__, url_prefix='/questions')
 
 @questions_bp.route('/', methods=['GET'])
-def get_question():
+def get_questions():
+    """Получение списка всех вопросов."""
     questions = Question.query.all()
-    questions_data = [{'id': q.id, 'text': q.text} for q in questions]
-    # print(questions_data)
-    # print(jsonify(questions_data))
-    return jsonify(questions_data)
+    results = [QuestionResponse.from_orm(question).dict() for question in questions]
+    return jsonify(results)
+
+@questions_bp.route('/<int:id>', methods=['GET'])
+def get_question(id):
+     """Получение деталей конкретного вопроса по его ID."""
+     question = Question.query.get(id)
+     if question is None:
+        return jsonify({'message':"Вопрос с таким ID не найден"}), 404
+     return jsonify({'message': f"Вопрос: {question.text}"}), 200
 
 
 @questions_bp.route('/', methods=['POST'])
 def create_question():
     data = request.get_json()
-
-    if not data or 'text' not in data:
-        return jsonify({'error': 'Missing question text'}), 400
-
-    #экземпляр класса
-    question = Question(text=data['text'])
+    try:
+        question_data = QuestionCreate(**data)
+    except ValidationError as e:
+        return jsonify(e.errors()), 400
+    question = Question(text=question_data.text)
     db.session.add(question)
     db.session.commit()
-    return jsonify({'id': question.id, 'text': question.text}), 201
+    return jsonify(QuestionResponse(id=question.id, text=question.text).dict()), 201
 
-@questions_bp.route('/questions/<int:id>', methods=['PUT'])
+@questions_bp.route('/<int:id>', methods=['PUT'])
 def update_question(id):
+    """Редактирование вопроса """
     question = Question.query.get(id)
     if question is None:
         return jsonify({'error': 'Question not found'}), 404
@@ -42,11 +50,16 @@ def update_question(id):
 
 
 
-@questions_bp.route('/questions/<int:id>', methods=['GET', 'DELETE'])
+@questions_bp.route('/<int:id>', methods=['GET', 'DELETE'])
 def delete_question(id):
-    question = Question.query.get_or_404(id)
-    question.delete()
-    return jsonify({'message': 'Question deleted'}), 200
+    """Удаление вопроса."""
+    question = Question.query.get(id)
+    if question is None:
+        return jsonify({'message': "Вопрос с таким ID не найден"}), 404
+
+    db.session.delete(question)
+    db.session.commit()
+    return jsonify({'message': f"Вопрос с ID {id} удален"}), 200
 
 
 

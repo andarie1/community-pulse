@@ -7,12 +7,18 @@ response_bp = Blueprint('response', __name__, url_prefix='/responses')
 
 @response_bp.route('/', methods=['GET'])
 def get_responses():
-    """Получение статистики ответов."""
-    data = request.get_json()
-    if not data or 'question_id' not in data or not data['question_id']:
-        return jsonify({"error": "Not found"}), 404
+     """Получение агрегированной статистики ответов."""
+     statistics = Statistic.query.all()
+     results = [
+         {
+         "question_id": stat.question_id,
+         "agree_count": stat.agree_count,
+         "disagree_count": stat.disagree_count
+         }
+     for stat in statistics
+     ]
+     return jsonify(results), 200
 
-    return jsonify({"message": "Получение статистики ответов"})
 
 @response_bp.route('/', methods=['POST'])
 def add_response():
@@ -47,3 +53,5 @@ def add_response():
     db.session.commit()
 
     return jsonify({'message': f'Ответ на вопрос под номером {data["question_id"]} сохранен'})
+
+
