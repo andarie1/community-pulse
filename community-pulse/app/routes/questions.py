@@ -12,10 +12,17 @@ questions_bp = Blueprint('questions', __name__, url_prefix='/questions')
 def get_questions():
     """Получение списка всех вопросов с категориями."""
     questions = Question.query.all()
-    results = [QuestionResponse(
-        id=q.id, text=q.text,
-        category=CategoryResponse(id=q.category.id, name=q.category.name) if q.category else None
-    ).model_dump() for q in questions]
+
+    results = [
+        QuestionResponse(
+            id=q.id,
+            text=q.text,
+            category=[
+                CategoryResponse(id=c.id, name=c.name) for c in q.categories
+            ]
+        ).model_dump() for q in questions
+    ]
+
     return jsonify(results)
 
 
@@ -29,7 +36,7 @@ def create_question():
         return jsonify(e.errors()), 400
 
     category = Category.query.get(question_data.category_id) if question_data.category_id else None
-    question = Question(text=question_data.text, category=category)
+    question = Question(text=question_data.text, categories=[category] if category else [])
     db.session.add(question)
     db.session.commit()
 
