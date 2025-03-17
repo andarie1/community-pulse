@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.models.response import Response
-from app.models.question import Question, Statistic
+from app.models.statistic import Statistic
 from app.models import db
 
 response_bp = Blueprint('response', __name__, url_prefix='/responses')
@@ -34,7 +34,6 @@ def add_response():
     db.session.add(response)
     db.session.commit()
 
-    # Получаем статистику по question_id
     statistics = Statistic.query.get(data['question_id'])
     if not statistics:
         statistics = Statistic(
@@ -44,7 +43,6 @@ def add_response():
         )
         db.session.add(statistics)
 
-    # Обновляем статистику
     if data['is_agree']:
         statistics.agree_count += 1
     else:
@@ -53,5 +51,7 @@ def add_response():
     db.session.commit()
 
     return jsonify({'message': f'Ответ на вопрос под номером {data["question_id"]} сохранен'})
+
+
 
 
