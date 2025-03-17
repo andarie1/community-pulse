@@ -2,5 +2,6 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-from app.models.question import *
-from app.models.response import *
+from .question import *
+from .response import *
+from .statistic import *

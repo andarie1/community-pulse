@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import List, Optional
 
 # ---------------------- CATEGORY SCHEMAS ----------------------
 
@@ -11,6 +11,10 @@ class CategoryResponse(BaseModel):
         from_attributes = True
 
 
+class CategoryBase(BaseModel):
+    name: str
+
+
 class CategoryCreate(BaseModel):
     name: str
 
@@ -20,22 +24,26 @@ class CategoryUpdate(BaseModel):
 
 
 # ---------------------- QUESTION SCHEMAS ----------------------
-class QuestionResponse(BaseModel):
-    id: int
+
+class QuestionBase(BaseModel):
     text: str
-    category: Optional[CategoryResponse] = None
-
-    class Config:
-        from_attributes = True
 
 
-class QuestionCreate(BaseModel):
-    text: str
-    category_id: Optional[int] = None
+class QuestionCreate(QuestionBase):
+    category_ids: List[int]  # При создании передаем ID категорий
 
 
 class QuestionUpdate(BaseModel):
     text: Optional[str] = None
-    category_id: Optional[int] = None
+    category_ids: Optional[List[int]] = None  # При обновлении можно обновить категории
+
+
+class QuestionResponse(BaseModel):
+    id: int
+    text: str
+    categories: List[CategoryResponse]  # Возвращаем категории
+
+    class Config:
+        from_attributes = True
 
 

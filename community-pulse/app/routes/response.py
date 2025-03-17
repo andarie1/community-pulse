@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.models.response import Response
-from app.models.question import Question, Statistic
+from app.models.statistic import Statistic
 from app.models import db
 
 response_bp = Blueprint('response', __name__, url_prefix='/responses')
@@ -18,6 +18,8 @@ def get_responses():
      for stat in statistics
      ]
      return jsonify(results), 200
+
+
 
 
 @response_bp.route('/', methods=['POST'])
