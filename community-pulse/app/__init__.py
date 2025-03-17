@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_migrate import Migrate
 from app.models import db
+from app.routes.category import category_bp
 from app.routes.questions import qa_bp
 from app.routes.response import response_bp
 from config import DevelopmentConfig
@@ -20,7 +21,8 @@ def create_app(config_class=DevelopmentConfig):
     migrate.init_app(app, db)
 
     # Регистрация Blueprint'ов
-    app.register_blueprint(qa_bp)
+    app.register_blueprint(qa_bp) #questions
     app.register_blueprint(response_bp)
+    app.register_blueprint(category_bp)
 
     return app

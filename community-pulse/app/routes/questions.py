@@ -1,136 +1,84 @@
 from flask import Blueprint, request, jsonify
-from app.models import db, Question, Category
-from pydantic import ValidationError
-from app.schemas.question import QuestionResponse, QuestionCreate, QuestionUpdate, CategoryResponse, CategoryCreate, CategoryUpdate
+from app.models import db, Question, Category, Response
+from app.schemas.question import QuestionResponse, QuestionCreate, QuestionUpdate, CategoryResponse, CategoryCreate, \
+    CategoryUpdate
 
-qa_bp = Blueprint('qa', __name__, url_prefix='/qa')
-
-# --- QUESTIONS ---
-
-@qa_bp.route('/questions', methods=['GET'])
-def get_questions():
-    """Get all questions with their categories."""
-    questions = Question.query.all()
-    return jsonify([
-        QuestionResponse(
-            id=q.id,
-            text=q.text,
-            categories=[CategoryResponse(id=c.id, name=c.name) for c in q.categories]
-        ).model_dump() for q in questions
-    ])
+qa_bp = Blueprint('questions', __name__, url_prefix='/questions')
 
 
-@qa_bp.route('/questions', methods=['POST'])
+# ------------------ CREATE QUESTION ------------------
+@qa_bp.route('', methods=['POST'])
 def create_question():
-    """Create a new question with optional category."""
-    data = request.get_json()
-    try:
-        question_data = QuestionCreate(**data)
-    except ValidationError as e:
-        return jsonify(e.errors()), 400
+    data = request.json
+    question_data = QuestionCreate(**data)
+    question = Question(text=question_data.text)
 
-    categories = Category.query.filter(
-        Category.id.in_(question_data.category_ids)).all() if question_data.category_ids else []
-    question = Question(text=question_data.text, categories=categories)
+    # Связываем категории
+    if question_data.category_ids:
+        categories = Category.query.filter(Category.id.in_(question_data.category_ids)).all()
+        question.categories = categories
+
     db.session.add(question)
     db.session.commit()
-
-    return jsonify(QuestionResponse(
-        id=question.id, text=question.text,
-        categories=[CategoryResponse(id=c.id, name=c.name) for c in question.categories]
-    ).model_dump()), 201
+    return jsonify(QuestionResponse.from_orm(question).dict()), 201
 
 
-@qa_bp.route('/questions/<int:id>', methods=['PUT'])
-def update_question(id):
-    """Update a question."""
-    question = Question.query.get(id)
-    if not question:
-        return jsonify({'error': 'Question not found'}), 404
+# ------------------ GET ALL QUESTIONS ------------------
+@qa_bp.route('', methods=['GET'])
+def get_questions():
+    questions = Question.query.all()
+    return jsonify([QuestionResponse.from_orm(q).dict() for q in questions]), 200
 
-    data = request.get_json()
-    try:
-        question_data = QuestionUpdate(**data)
-    except ValidationError as e:
-        return jsonify(e.errors()), 400
 
-    if question_data.text:
-        question.text = question_data.text
+# ------------------ UPDATE QUESTION ------------------
+@qa_bp.route('/<int:question_id>', methods=['PUT'])
+def update_question(question_id):
+    question = Question.query.get_or_404(question_id)
+    data = request.json
+    update_data = QuestionUpdate(**data)
 
-    if question_data.category_ids is not None:
-        question.categories = Category.query.filter(Category.id.in_(question_data.category_ids)).all()
+    if update_data.text:
+        question.text = update_data.text
+
+    if update_data.category_ids is not None:
+        categories = Category.query.filter(Category.id.in_(update_data.category_ids)).all()
+        question.categories = categories
 
     db.session.commit()
-    return jsonify(QuestionResponse(
-        id=question.id, text=question.text,
-        categories=[CategoryResponse(id=c.id, name=c.name) for c in question.categories]
-    ).model_dump()), 200
+    return jsonify(QuestionResponse.from_orm(question).dict()), 200
 
 
-@qa_bp.route('/questions/<int:id>', methods=['DELETE'])
-def delete_question(id):
-    """Delete a question."""
-    question = Question.query.get(id)
-    if not question:
-        return jsonify({'error': 'Question not found'}), 404
-
+# ------------------ DELETE QUESTION ------------------
+@qa_bp.route('/<int:question_id>', methods=['DELETE'])
+def delete_question(question_id):
+    question = Question.query.get_or_404(question_id)
     db.session.delete(question)
     db.session.commit()
-    return jsonify({'message': f'Question {id} deleted'}), 200
+    return jsonify({'message': 'Вопрос успешно удален.'}), 200
 
 
-# --- CATEGORIES ---
+# ------------------ ALL STATISTICS ------------------
+@qa_bp.route('/stats', methods=['GET'])  # !!! Исправленный URL !!!
+def get_question_stats():
+    questions = Question.query.all()
+    result = []
 
-@qa_bp.route('/categories', methods=['POST'])
-def create_category():
-    """Create a category."""
-    data = request.get_json()
-    try:
-        category_data = CategoryCreate(**data)
-    except ValidationError as e:
-        return jsonify(e.errors()), 400
+    for question in questions:
+        agree_count = Response.query.filter_by(question_id=question.id, is_agree=True).count()
+        disagree_count = Response.query.filter_by(question_id=question.id, is_agree=False).count()
 
-    category = Category(name=category_data.name)
-    db.session.add(category)
-    db.session.commit()
-    return jsonify(CategoryResponse(id=category.id, name=category.name).model_dump()), 201
+        result.append({
+            "id": question.id,
+            "text": question.text,
+            "agree_count": agree_count,
+            "disagree_count": disagree_count
+        })
 
-
-@qa_bp.route('/categories', methods=['GET'])
-def get_categories():
-    """Get all categories."""
-    categories = Category.query.all()
-    return jsonify([CategoryResponse(id=c.id, name=c.name).model_dump() for c in categories])
+    return jsonify(result), 200
 
 
-@qa_bp.route('/categories/<int:id>', methods=['PUT'])
-def update_category(id):
-    """Update a category."""
-    category = Category.query.get(id)
-    if not category:
-        return jsonify({'error': 'Category not found'}), 404
-
-    data = request.get_json()
-    try:
-        category_data = CategoryUpdate(**data)
-    except ValidationError as e:
-        return jsonify(e.errors()), 400
-
-    category.name = category_data.name
-    db.session.commit()
-    return jsonify(CategoryResponse(id=category.id, name=category.name).model_dump()), 200
 
 
-@qa_bp.route('/categories/<int:id>', methods=['DELETE'])
-def delete_category(id):
-    """Delete a category."""
-    category = Category.query.get(id)
-    if not category:
-        return jsonify({'error': 'Category not found'}), 404
-
-    db.session.delete(category)
-    db.session.commit()
-    return jsonify({'message': f'Category {id} deleted'}), 200
 
 
 
