@@ -30,3 +30,4 @@ class Category(db.Model):
 
     def __repr__(self):
         return f'Category: {self.name}'
+

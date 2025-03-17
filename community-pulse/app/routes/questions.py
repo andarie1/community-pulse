@@ -58,7 +58,7 @@ def delete_question(question_id):
 
 
 # ------------------ ALL STATISTICS ------------------
-@qa_bp.route('/stats', methods=['GET'])  # !!! Исправленный URL !!!
+@qa_bp.route('/stats', methods=['GET'])
 def get_question_stats():
     questions = Question.query.all()
     result = []
@@ -75,6 +75,7 @@ def get_question_stats():
         })
 
     return jsonify(result), 200
+
 
 
 

@@ -20,8 +20,6 @@ def get_responses():
      return jsonify(results), 200
 
 
-
-
 @response_bp.route('/', methods=['POST'])
 def add_response():
     """Добавление нового ответа на вопрос."""
@@ -36,7 +34,6 @@ def add_response():
     db.session.add(response)
     db.session.commit()
 
-    # Получаем статистику по question_id
     statistics = Statistic.query.get(data['question_id'])
     if not statistics:
         statistics = Statistic(
@@ -46,7 +43,6 @@ def add_response():
         )
         db.session.add(statistics)
 
-    # Обновляем статистику
     if data['is_agree']:
         statistics.agree_count += 1
     else:
@@ -55,5 +51,7 @@ def add_response():
     db.session.commit()
 
     return jsonify({'message': f'Ответ на вопрос под номером {data["question_id"]} сохранен'})
+
+
 
 

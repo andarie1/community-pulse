@@ -14,13 +14,10 @@ def create_app(config_class=DevelopmentConfig):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
-    # Инициализация базы данных
     db.init_app(app)
 
-    # Инициализация миграций
     migrate.init_app(app, db)
 
-    # Регистрация Blueprint'ов
     app.register_blueprint(qa_bp) #questions
     app.register_blueprint(response_bp)
     app.register_blueprint(category_bp)
